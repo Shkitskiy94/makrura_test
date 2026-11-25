@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Проекты</h1>
+
+<div class="card">
+  <h2>Загрузка из Excel</h2>
+  <p class="muted">
+    Файл .xlsx с двумя вкладками:<br>
+    1) «Проекты» — колонки «Название проекта» (обязательно), «Ключевые фразы»
+    (через точку с запятой), «Описание», «Внешний id».<br>
+    2) «Группы поиска» — колонки «Площадка» (vk / telegram / ok / mymir / rutube)
+    и «URL группы».<br>
+    Любой проект автоматически ищется во всех группах поиска. Старый однолистовый
+    формат тоже распознаётся.
+  </p>
+  <form id="import-form" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".xlsx,.xlsm" required>
+    <button type="submit">Загрузить в базу</button>
+  </form>
+  <p><a href="/projects-template.xlsx">⬇ Скачать шаблон Excel</a></p>
+  <pre id="import-result" class="result" hidden></pre>
+</div>
+
+<div class="card">
+  <h2>Добавить проект</h2>
+  <p class="muted">
+    Название + ключевые фразы (необязательно, через точку с запятой).
+    Группы поиска выбирать не нужно — проект сразу ищется во всех
+    <a href="/sources">группах поиска</a> (сейчас: {{ sources_total }}).
+  </p>
+  <form id="add-form">
+    <input name="title" placeholder="Название проекта" required>
+    <input name="keywords" placeholder="Ключевые фразы через ; (необязательно)" size="40">
+    <button type="submit">Добавить</button>
+  </form>
+  <p id="add-error" class="error" hidden></p>
+</div>
+
+<form method="get" action="/" class="search-form row">
+  <input type="text" name="q" value="{{ q }}" placeholder="Поиск по названию или ключевой фразе…">
+  <button type="submit">Найти</button>
+  {% if q %}<a class="btn-mini" href="/">сбросить ✕</a>{% endif %}
+</form>
+
+{% if q %}<p class="muted">Результаты поиска по запросу «{{ q }}»:</p>{% endif %}
+{% include "_pagination.html" %}
+<table>
+  <tr>
+    <th class="sortable">
+      <a href="/?q={{ q|urlencode }}&sort=id&dir={{ 'desc' if (sort == 'id' and dir == 'asc') else 'asc' }}">id{% if sort == 'id' %} {{ '▲' if dir == 'asc' else '▼' }}{% endif %}</a>
+    </th>
+    <th class="sortable">
+      <a href="/?q={{ q|urlencode }}&sort=title&dir={{ 'desc' if (sort == 'title' and dir == 'asc') else 'asc' }}">Название{% if sort == 'title' %} {{ '▲' if dir == 'asc' else '▼' }}{% endif %}</a>
+    </th>
+    <th>Ключевые фразы</th><th>Активен</th><th></th>
+  </tr>
+  {% for p in projects %}
+  <tr>
+    <td>{{ p.id }}</td>
+    <td><a href="/projects/{{ p.id }}">{{ p.title }}</a></td>
+    <td class="muted">{{ p.keywords | map(attribute='phrase') | join('; ') if p.keywords else '—' }}</td>
+    <td>
+      <label class="switch" title="Включить/выключить поиск по проекту">
+        <input type="checkbox" class="toggle-active" data-id="{{ p.id }}"
+               {% if p.is_active %}checked{% endif %}>
+        {{ "да" if p.is_active else "нет" }}
+      </label>
+    </td>
+    <td class="col-open">
+      <a class="btn-mini" href="/projects/{{ p.id }}">открыть →</a>
+      <button class="btn-del btn-del-project" data-id="{{ p.id }}"
+              title="Удалить проект вместе с фразами и находками">удалить</button>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="muted">
+    {% if q %}Ничего не найдено по запросу «{{ q }}».{% else %}Проектов пока нет — добавьте или загрузите Excel.{% endif %}
+  </td></tr>
+  {% endfor %}
+</table>
+{% include "_pagination.html" %}
+<p class="muted">Всего проектов: {{ total }}{% if q %} · показано на странице: {{ projects|length }}{% endif %}
+  · групп поиска: {{ sources_total }}
+  (каждый активный проект ищется во всех группах)</p>
+
+<script>
+  // единый префикс API + токен доступа (страницы открыты без токена, API — с ним)
+  const API = '/api/private/v1';
+  const AUTH = {'X-Auth-Token': '{{ api_token }}'};
+
+  // переключение активности проекта прямо из таблицы
+  document.querySelectorAll('.toggle-active').forEach((cb) => {
+    cb.addEventListener('change', async () => {
+      const r = await fetch(`${API}/projects/${cb.dataset.id}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json', ...AUTH},
+        body: JSON.stringify({is_active: cb.checked})
+      });
+      if (r.ok) location.reload();
+      else {
+        const d = await r.json();
+        alert('Не удалось изменить активность: ' + (d.detail || r.status));
+        cb.checked = !cb.checked;
+      }
+    });
+  });
+
+  // удаление проекта прямо из таблицы
+  document.querySelectorAll('.btn-del-project').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Удалить проект? Будут удалены его ключевые фразы, связи и находки.')) return;
+      const r = await fetch(`${API}/projects/` + btn.dataset.id, {method: 'DELETE', headers: AUTH});
+      if (r.ok || r.status === 204) location.reload();
+      else alert('Не удалось удалить проект: ' + r.status);
+    });
+  });
+
+  document.getElementById('add-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = e.target.title.value.trim();
+    if (!title) return;
+    const keywords = e.target.keywords.value.split(';').map(s => s.trim()).filter(Boolean);
+    const err = document.getElementById('add-error');
+    const r = await fetch(`${API}/projects`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', ...AUTH},
+      body: JSON.stringify({title, keywords})
+    });
+    if (r.ok) location.reload();
+    else {
+      const d = await r.json();
+      err.hidden = false;
+      err.textContent = typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail);
+    }
+  });
+
+  document.getElementById('import-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = e.target.querySelector('input[type=file]');
+    if (!fileInput.files.length) return;
+    const fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+    const btn = e.target.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Загрузка...';
+    const r = await fetch(`${API}/projects/import`, {method: 'POST', headers: AUTH, body: fd});
+    const data = await r.json();
+    const out = document.getElementById('import-result');
+    out.hidden = false;
+    if (r.ok) {
+      out.textContent =
+        `Строк: ${data.total_rows} · Проектов создано: ${data.created} · Обновлено: ${data.updated}` +
+        ` · Пропущено: ${data.skipped} · Групп добавлено: ${data.sources_created}` +
+        ` · Фраз добавлено: ${data.keywords_created} · Связей проект×группа: ${data.links_created}` +
+        (data.errors && data.errors.length ? `\n\nЗамечания:\n` + data.errors.join('\n') : '');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      out.textContent = 'Ошибка: ' + (data.detail || JSON.stringify(data));
+      btn.disabled = false; btn.textContent = 'Загрузить в базу';
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Находки — Makrura{% endblock %}
+{% block content %}
+<h1>Находки</h1>
+<form method="get" action="/findings" class="search-form row">
+  <input type="text" name="q" value="{{ q }}" placeholder="Поиск по URL, автору или проекту…">
+  <button type="submit">Найти</button>
+  {% if q %}<a class="btn-mini" href="/findings">сбросить ✕</a>{% endif %}
+</form>
+
+{% if q %}<p class="muted">Результаты поиска по запросу «{{ q }}»:</p>{% endif %}
+{% include "_pagination.html" %}
+<table>
+  <tr>
+    <th class="sortable">
+      <a href="/findings?q={{ q|urlencode }}&sort=id&dir={{ 'desc' if (sort == 'id' and dir == 'asc') else 'asc' }}">id{% if sort == 'id' %} {{ '▲' if dir == 'asc' else '▼' }}{% endif %}</a>
+    </th>
+    <th>Проект</th><th>Площадка</th><th>URL</th>
+    <th>Автор</th><th>Совпадение</th><th>Статус</th><th>Первое обнаружение</th>
+  </tr>
+  {% for f in findings %}
+  <tr>
+    <td>{{ f.id }}</td>
+    <td>{{ f.project.title if f.project else '' }}</td>
+    <td>{{ f.platform.value }}</td>
+    <td><a href="{{ f.url }}" target="_blank">{{ f.url|truncate(80) }}</a></td>
+    <td>{{ f.author or '' }}</td>
+    <td>{{ '%.0f'|format(f.match_score) if f.match_score is not none else '' }}</td>
+    <td>{{ f.status.value }}</td>
+    <td>{{ f.first_seen_at.strftime('%Y-%m-%d %H:%M') if f.first_seen_at else '' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8" class="muted">
+    {% if q %}Ничего не найдено по запросу «{{ q }}».{% else %}Находок пока нет.{% endif %}
+  </td></tr>
+  {% endfor %}
+</table>
+{% include "_pagination.html" %}
+<p class="muted">Всего находок: {{ total }}{% if q %} · показано на странице: {{ findings|length }}{% endif %}</p>
+{% endblock %}

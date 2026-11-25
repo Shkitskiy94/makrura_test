@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{{ project.title }} — проект{% endblock %}
+{% block content %}
+<p><a href="/">← Все проекты</a> · <a href="/sources">Группы поиска</a></p>
+<h1>Проект: {{ project.title }}</h1>
+<p class="muted">
+  id={{ project.id }} · находок: {{ findings_count }}
+  {% if project.description %}<br>Описание: {{ project.description }}{% endif %}
+</p>
+
+<div class="card">
+  <h2>Редактирование проекта</h2>
+  <form id="edit-form" class="col-form">
+    <label>Название
+      <input name="title" value="{{ project.title }}" required maxlength="512">
+    </label>
+    <label>Описание / примечания
+      <textarea name="description" rows="2" maxlength="4096">{{ project.description or "" }}</textarea>
+    </label>
+    <div class="row">
+      <button type="submit">Сохранить</button>
+      <a class="btn-mini" href="/">отмена</a>
+      <span class="spacer"></span>
+      <button type="button" id="delete-btn" class="btn-danger">Удалить проект</button>
+    </div>
+  </form>
+  <p id="edit-error" class="error" hidden></p>
+</div>
+
+<div class="card">
+  <h2>Ключевые фразы</h2>
+  <p class="muted">Поиск выполняется по названию проекта и по каждой ключевой фразе.</p>
+  <ul>
+    <li><b>{{ project.title }}</b> <span class="muted">(название проекта)</span></li>
+    {% for k in project.keywords %}
+    <li>{{ k.phrase }} <button class="btn-del" data-id="{{ k.id }}">удалить</button></li>
+    {% endfor %}
+  </ul>
+  <form id="add-keyword" class="row">
+    <input name="phrase" placeholder="Новая ключевая фраза" required size="40">
+    <button type="submit">Добавить фразу</button>
+  </form>
+  <p id="kw-error" class="error" hidden></p>
+</div>
+
+<div class="card">
+  <h2>Группы поиска (применяются ко всем проектам)</h2>
+  <p class="muted">
+    Проект ищется сразу во всех группах. Добавлять/удалять группы можно
+    на странице <a href="/sources">«Группы поиска»</a>.
+  </p>
+</div>
+
+<table>
+  <tr><th>id</th><th>Площадка</th><th>URL группы</th><th>Тип</th></tr>
+  {% for s in sources | sort(attribute='platform') %}
+  <tr>
+    <td>{{ s.id }}</td>
+    <td><span class="tag tag-{{ s.platform.value }}">{{ s.platform.value }}</span></td>
+    <td><a href="{{ s.url }}" target="_blank">{{ s.url }}</a></td>
+    <td>{{ s.source_type.value }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4" class="muted">Групп пока нет — добавьте их на странице «Группы поиска» или загрузите Excel.</td></tr>
+  {% endfor %}
+</table>
+<p class="muted">Всего групп: {{ sources|length }}</p>
+
+<script>
+  const API = '/api/private/v1';
+  const AUTH = {'X-Auth-Token': '{{ api_token }}'};
+
+  // сохранение названия/описания проекта
+  document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const err = document.getElementById('edit-error');
+    const btn = f.querySelector('button[type=submit]');
+    btn.disabled = true;
+    try {
+      const r = await fetch(`${API}/projects/{{ project.id }}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json', ...AUTH},
+        body: JSON.stringify({
+          title: f.title.value.trim(),
+          description: f.description.value.trim()
+        })
+      });
+      if (r.ok) location.reload();
+      else {
+        const d = await r.json().catch(() => ({}));
+        err.hidden = false;
+        err.textContent = typeof d.detail === 'string' ? d.detail : ('Ошибка ' + r.status);
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // удаление проекта (вместе с фразами, связями и находками)
+  const PROJECT_TITLE = {{ project.title | tojson }};
+  document.getElementById('delete-btn').addEventListener('click', async () => {
+    if (!confirm(`Удалить проект «${PROJECT_TITLE}» вместе с ключевыми фразами и находками? Это действие необратимо.`)) return;
+    const r = await fetch(`${API}/projects/{{ project.id }}`, {method: 'DELETE', headers: AUTH});
+    if (r.ok || r.status === 204) location.href = '/';
+    else alert('Не удалось удалить проект: ' + r.status);
+  });
+
+  document.getElementById('add-keyword').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const err = document.getElementById('kw-error');
+    const r = await fetch(`${API}/projects/{{ project.id }}/keywords`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', ...AUTH},
+      body: JSON.stringify({phrase: f.phrase.value})
+    });
+    if (r.ok) location.reload();
+    else {
+      const d = await r.json();
+      err.hidden = false;
+      err.textContent = typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail);
+    }
+  });
+
+  document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', async () => {
+    if (!confirm('Удалить ключевую фразу?')) return;
+    const r = await fetch(`${API}/keywords/` + btn.dataset.id, {method: 'DELETE', headers: AUTH});
+    if (r.ok || r.status === 204) location.reload();
+  }));
+</script>
+{% endblock %}

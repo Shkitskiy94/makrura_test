@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Группы поиска{% endblock %}
+{% block content %}
+<p><a href="/">← Все проекты</a></p>
+<h1>Группы поиска</h1>
+<p class="muted">
+  Глобальный список ресурсов, где выполняется поиск. Любой активный проект
+  автоматически ищется во всех группах (сейчас активных проектов: {{ active_projects }}).
+</p>
+
+<div class="card">
+  <h2>Создать группу поиска</h2>
+  <form id="add-source" class="row">
+    <select name="platform" required>
+      {% for p in platforms %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+    </select>
+    <input name="url" placeholder="https://vk.com/group или https://t.me/channel" required size="50">
+    <button type="submit">Создать группу</button>
+  </form>
+  <p id="source-error" class="error" hidden></p>
+</div>
+
+<div class="card">
+  <h2>Поиск по URL группы</h2>
+  <form id="url-search-form" method="get" action="/sources" class="row">
+    <input id="url-search" name="q" type="search" value="{{ q }}"
+           placeholder="Введите URL или часть адреса группы, например https://t.me/channel"
+           size="60" autocomplete="off">
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="dir" value="{{ dir }}">
+    <button type="submit">Найти</button>
+    {% if q %}<a class="btn-mini" href="/sources">сбросить ✕</a>{% endif %}
+  </form>
+  <p class="muted" id="url-search-info">
+    {% if q %}{% if total %}Найдено групп: {{ total }}{% else %}Совпадений нет{% endif %}{% endif %}
+  </p>
+</div>
+
+{% include "_pagination.html" %}
+<table id="sources-table">
+  <tr>
+    <th class="sortable"><a href="/sources?q={{ q|urlencode }}&sort=id&dir={{ 'desc' if (sort == 'id' and dir == 'asc') else 'asc' }}">id{% if sort == 'id' %} {{ '▲' if dir == 'asc' else '▼' }}{% endif %}</a></th>
+    <th class="sortable"><a href="/sources?q={{ q|urlencode }}&sort=platform&dir={{ 'desc' if (sort == 'platform' and dir == 'asc') else 'asc' }}">Площадка{% if sort == 'platform' %} {{ '▲' if dir == 'asc' else '▼' }}{% endif %}</a></th>
+    <th>URL группы</th><th>Тип</th><th>Проектов</th><th></th>
+  </tr>
+  {% for s in sources %}
+  <tr>
+    <td>{{ s.id }}</td>
+    <td><span class="tag tag-{{ s.platform.value }}">{{ s.platform.value }}</span></td>
+    <td><a href="{{ s.url }}" target="_blank">{{ s.url }}</a></td>
+    <td>{{ s.source_type.value }}</td>
+    <td>{{ project_counts.get(s.id, 0) }}</td>
+    <td><button class="btn-del" data-id="{{ s.id }}">удалить</button></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="muted">
+    {% if q %}Ничего не найдено по этому URL.{% else %}Групп пока нет — создайте первую или загрузите Excel (вкладка «Группы поиска»).{% endif %}
+  </td></tr>
+  {% endfor %}
+</table>
+{% include "_pagination.html" %}
+<p class="muted">Всего групп: {{ total }}{% if q %} · показано на странице: {{ sources|length }}{% endif %}</p>
+
+<script>
+  const API = '/api/private/v1';
+  const AUTH = {'X-Auth-Token': '{{ api_token }}'};
+
+  // Поиск по URL группы: серверный (по всей базе), с автоотправкой после паузы ввода.
+  // Скрытые sort/dir в форме сохраняют текущую сортировку.
+  const urlSearch = document.getElementById('url-search');
+  const searchForm = document.getElementById('url-search-form');
+  let searchTimer = null;
+
+  urlSearch.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      sessionStorage.setItem('sources-search-focus', '1');
+      searchForm.submit();
+    }, 600);
+  });
+
+  // после перезагрузки страницы возвращаем фокус и курсор в конец поля поиска
+  if (sessionStorage.getItem('sources-search-focus')) {
+    sessionStorage.removeItem('sources-search-focus');
+    urlSearch.focus();
+    urlSearch.setSelectionRange(urlSearch.value.length, urlSearch.value.length);
+  }
+
+  document.getElementById('add-source').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const err = document.getElementById('source-error');
+    const r = await fetch(`${API}/sources`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', ...AUTH},
+      body: JSON.stringify({platform: f.platform.value, url: f.url.value})
+    });
+    if (r.ok) location.reload();
+    else {
+      const d = await r.json();
+      err.hidden = false;
+      err.textContent = typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail);
+    }
+  });
+
+  document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', async () => {
+    if (!confirm('Удалить эту группу поиска для всех проектов?')) return;
+    const r = await fetch(`${API}/sources/` + btn.dataset.id, {method: 'DELETE', headers: AUTH});
+    if (r.ok || r.status === 204) location.reload();
+  }));
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Makrura{% endblock %}</title>
+  <!-- v=2: bust browser cache after nav-bar restyle -->
+  <link rel="stylesheet" href="/static/style.css?v=6">
+</head>
+<body>
+  <nav>
+    {% set path = request.url.path %}
+    <a href="/" class="{% if path == '/' or path.startswith('/projects') %}active{% endif %}">Проекты</a>
+    <a href="/sources" class="{% if path.startswith('/sources') %}active{% endif %}">Группы поиска</a>
+    <a href="/findings" class="{% if path.startswith('/findings') %}active{% endif %}">Находки</a>
+  </nav>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

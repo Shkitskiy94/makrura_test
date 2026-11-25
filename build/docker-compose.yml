@@ -1,0 +1,44 @@
+services:
+  makrura:
+    image: ctchub/makrura:latest
+    env_file:
+      - ../.env
+    environment:
+      MYSQL_HOST: percona
+      MYSQL_PORT: "3306"
+    depends_on:
+      percona:
+        condition: service_healthy
+    command: ["sh", "/app/build/run_app.sh"]
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  percona:
+    image: percona/percona-server:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command:
+      - '--max_allowed_packet=9999G'
+      - '--character-set-server=utf8mb4'
+      - '--collation-server=utf8mb4_unicode_ci'
+      - '--wait_timeout=999999'
+    restart: always
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'mysqladmin ping -h 127.0.0.1 --protocol=tcp -uroot -p"$$MYSQL_ROOT_PASSWORD"'
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  mysql_data:

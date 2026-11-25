@@ -1,0 +1,60 @@
+stages:
+  - tests
+  - SAST
+  - build_werf
+  - Image-Scan
+  - canary
+  - deploy
+  - uninstall
+
+variables:
+  APP_NAME: makrura
+  SLACK_ICON: ":mock:"
+
+SAST:linter:
+  extends: .lint
+  variables:
+    LANGUAGE: "python"
+
+Image-Scan:gen-requipments:
+  extends: .syft
+  variables:
+    PATH_IMAGE_FOR_SCAN: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    LANGUAGE: "python"
+
+Image-Scan:Trivy:
+  extends: .security-check
+  variables:
+    PATH_IMAGE_FOR_SCAN: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+
+include:
+  - project: gitlab/templates
+    ref: base
+    file: hub/tests.yml
+  - project: gitlab/templates
+    ref: base
+    file: sast+lint.yml
+  - project: gitlab/templates
+    ref: base
+    file: seccheck+genreqip.yml
+  - project: gitlab/templates
+    ref: base
+    file: build-werf.yml
+  - project: gitlab/templates
+    ref: base
+    file: deploy-werf.yml
+  - project: gitlab/templates
+    ref: base
+    file: uninstall.yml
+
+Build:
+  extends: .build_werf
+  artifacts:
+    paths:
+      - release
+  script:
+    - |
+      werf build \
+        --repo "$CI_REGISTRY_IMAGE" \
+        --add-custom-tag "$CI_COMMIT_SHORT_SHA"
+    - echo "$CI_COMMIT_TAG" > release

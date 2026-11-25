@@ -1,0 +1,13 @@
+{# Общая пагинация: expects page, pages, total, window, has_prev, has_next, q, sort, dir #}
+{% set qs = 'q=' ~ (q|default('', true)|urlencode) ~ '&sort=' ~ (sort|default('id', true)) ~ '&dir=' ~ (dir|default('asc', true)) %}
+{% if pages > 1 %}
+<div class="pagination">
+  {% if has_prev %}<a class="page-btn" href="?{{ qs }}&page={{ page - 1 }}">← пред.</a>{% endif %}
+  {% for p in window %}
+    {% if p == page %}<span class="page-btn current">{{ p }}</span>
+    {% else %}<a class="page-btn" href="?{{ qs }}&page={{ p }}">{{ p }}</a>{% endif %}
+  {% endfor %}
+  {% if has_next %}<a class="page-btn" href="?{{ qs }}&page={{ page + 1 }}">след. →</a>{% endif %}
+  <span class="muted page-info">стр. {{ page }} из {{ pages }} · всего {{ total }}</span>
+</div>
+{% endif %}

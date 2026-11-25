@@ -1,0 +1,14 @@
+project: makrura
+configVersion: 1
+cleanup:
+  disable: true
+---
+
+image: makrura
+dockerfile: build/Dockerfile
+context: .
+args:
+  BASE_GITLAB_URL: {{ env "BASE_GITLAB_URL" (default "gitlab.ctcmedia.ru") }}
+  APP_VERSION: {{ env "CI_COMMIT_SHORT_SHA" (default "latest") }}
+  isdev: {{ env "ISDEV" (default "false") }}
+  LAB_PRIVATE_TOKEN: {{ env "LAB_PRIVATE_TOKEN" }}

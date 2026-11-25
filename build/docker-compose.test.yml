@@ -1,0 +1,36 @@
+services:
+  test:
+    image: ${IMAGE_NAME}
+    env_file:
+      - ../.env
+    environment:
+      MYSQL_HOST: percona_test
+      MYSQL_PORT: "3306"
+      DEBUG: "true"
+      ENABLE_SCHEDULER: "false"
+    depends_on:
+      percona_test:
+        condition: service_healthy
+    command: ["uv", "run", "pytest", "-v", "--tb=short"]
+
+  percona_test:
+    image: percona/percona-server:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command:
+      - '--max_allowed_packet=9999G'
+      - '--character-set-server=utf8mb4'
+      - '--collation-server=utf8mb4_unicode_ci'
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'mysqladmin ping -h 127.0.0.1 --protocol=tcp -uroot -p"$$MYSQL_ROOT_PASSWORD"'
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+volumes: {}

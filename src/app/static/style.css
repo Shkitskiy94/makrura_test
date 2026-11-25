@@ -1,0 +1,64 @@
+body { font-family: system-ui, sans-serif; margin: 0; color: #222; }
+nav { background: #1e3a5f; padding: 8px 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+nav a { color: #dbe4ee; text-decoration: none; font-weight: 600; font-size: 14px;
+        padding: 6px 14px; border-radius: 6px; transition: background .15s, color .15s; }
+nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
+nav a.active { background: #ffffff; color: #1e3a5f; }
+main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 14px; }
+th { background: #f5f5f5; }
+form { display: flex; gap: 8px; }
+input { padding: 8px; flex: 1; }
+button { padding: 8px 16px; cursor: pointer; }
+
+.card { border: 1px solid #ddd; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; background: #fafafa; }
+.card h2 { margin-top: 0; font-size: 16px; }
+.muted { color: #777; font-size: 13px; }
+.result { background: #fff; border: 1px dashed #bbb; padding: 10px; white-space: pre-wrap; font-size: 13px; }
+
+/* теги площадок */
+.tag { padding: 2px 8px; border-radius: 10px; font-size: 12px; color: #fff; background: #666; }
+.tag-vk { background: #4680c2; }
+.tag-telegram { background: #2aabee; }
+.tag-ok { background: #ee8208; }
+.tag-mymir { background: #ff5722; }
+.tag-rutube { background: #1f9e86; }
+.error { color: #b00020; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn-mini { font-size: 12px; padding: 2px 8px; border: 1px solid #ccc; border-radius: 6px; text-decoration: none; }
+.btn-del { font-size: 12px; color: #b00020; background: none; border: 1px solid #e0b4bd; border-radius: 6px; cursor: pointer; }
+select, input[type=text], input:not([type]) { padding: 6px 8px; border: 1px solid #bbb; border-radius: 6px; }
+
+/* колонка «открыть» — не переносится, кнопка целиком в одной строке */
+.col-open { width: 1%; white-space: nowrap; text-align: right; }
+.col-open .actions { display: inline-flex; align-items: center; gap: 6px; }
+.btn-mini { display: inline-block; white-space: nowrap; padding: 4px 12px; }
+
+/* переключатель активности в таблице проектов */
+.switch { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+.switch input[type=checkbox] { flex: none; width: 15px; height: 15px; accent-color: #1e3a5f; cursor: pointer; }
+
+/* форма редактирования проекта (вертикальная) */
+.col-form { display: flex; flex-direction: column; gap: 10px; max-width: 640px; }
+.col-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: #444; }
+.col-form input, .col-form textarea { font: inherit; font-weight: 400; width: 100%; box-sizing: border-box; }
+.spacer { flex: 1; }
+.btn-danger { margin-left: auto; color: #fff; background: #b00020; border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+.btn-danger:hover { background: #8d001a; }
+
+/* поиск и пагинация в таблицах */
+.search-form { margin: 16px 0 8px; max-width: 560px; }
+.search-form input[name=q] { flex: 1; padding: 8px 12px; border: 1px solid #bbb; border-radius: 6px; font-size: 14px; }
+.pagination { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 14px 0 4px; }
+.page-btn { display: inline-block; min-width: 30px; text-align: center; padding: 5px 10px;
+            border: 1px solid #ccc; border-radius: 6px; text-decoration: none; color: #1e3a5f; font-size: 14px; }
+.page-btn:hover { background: #e8eef5; }
+.page-btn.current { background: #1e3a5f; color: #fff; border-color: #1e3a5f; font-weight: 600; }
+.page-info { margin-left: 8px; }
+
+/* сортировка в заголовках таблиц (кликабельные th) */
+th.sortable a { display: inline-flex; align-items: center; gap: 4px; color: inherit;
+                text-decoration: none; font-weight: 700; white-space: nowrap; }
+th.sortable a:hover { color: #1e3a5f; text-decoration: underline; }
+th.sortable { cursor: pointer; user-select: none; }

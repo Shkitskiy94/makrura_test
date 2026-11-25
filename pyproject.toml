@@ -1,0 +1,84 @@
+[project]
+name = "makrura"
+version = "0.1.0"
+description = "Внутренний инструмент автоматизированного поиска пиратского контента в соцсетях"
+requires-python = ">=3.13"
+dependencies = [
+    # Веб-слой
+    "fastapi>=0.115",
+    "granian[uvloop]>=2.0",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "python-common[health,logger]==0.1.1",# загрузка файлов (Excel) через FastAPI
+
+    # База данных
+    "sqlalchemy[asyncio]>=2.0",      # [asyncio] тянет обязательную greenlet
+    "alembic>=1.14",
+    "aiomysql>=0.2",                 # асинхронный драйвер MySQL (приложение на async-движке)
+    "aiosqlite>=0.20",               # async-движок SQLite (тесты)
+    "pymysql>=1.1",                  # синхронный драйвер MySQL — нужен Alembic
+    "cryptography>=44.0",            # нужен PyMySQL для caching_sha2_password (MySQL 8)
+
+    # Фоновые задачи и расписание
+    "apscheduler>=3.11",
+
+    # Работа с Excel
+    "openpyxl>=3.1",
+
+    # HTTP и поиск по площадкам
+    "httpx>=0.28",
+
+    # Нечёткое сравнение названий
+    "rapidfuzz>=3.12",
+
+    # Валидация и настройки
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "httpx>=0.28",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["templates/*.html", "static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[[tool.uv.index]]
+name = "ctc-nexus"
+url = "https://nexus.ctcru.tech/repository/pypi-hosted/simple/"
+
+[tool.uv.sources]
+python-common = { index = "ctc-nexus" }
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["src/tests"]
+# плагин libtmux несовместим с pytest 9 (mark на fixture) — отключаем его
+addopts = "-p no:libtmux"
+asyncio_mode = "auto"
+
+[tool.uv.workspace]
+members = [
+    "makrura",
+]
+
+
